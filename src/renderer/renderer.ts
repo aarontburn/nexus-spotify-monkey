@@ -28,6 +28,6 @@ sendToProcess("init");
 
 
 document.getElementById("spotify-reboot").addEventListener('click', () => {
-    sendToProcess("reboot")
+    sendToProcess("reboot");
 })
 

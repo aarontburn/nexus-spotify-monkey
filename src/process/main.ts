@@ -28,12 +28,18 @@ export default class SpotifyMonkeyProcess extends Process {
     }
 
 
-
     public initialize(): void {
+        if (!this.isInitialized()) {
+            console.info("🐒 Spotify Monkey is booted.");
+        }
+
         super.initialize();
-        const pathToExe: string = this.getSettings().findSetting("spotify_path").getValue() as string
-        const closeOnExit: boolean = this.getSettings().findSetting("close-on-exit").getValue() as boolean
-        this.monkey = new Monkey(pathToExe, this.isShown, closeOnExit);
+
+        const pathToExe: string = this.getSettings().findSetting("spotify_path").getValue() as string;
+        const closeOnExit: boolean = this.getSettings().findSetting("close_on_exit").getValue() as boolean;
+
+        this.monkey?.cleanup(); // cleanup any old 
+        this.monkey = new Monkey(this, pathToExe, this.isShown, closeOnExit);
         this.sendToRenderer("path", pathToExe);
     }
 
@@ -44,7 +50,7 @@ export default class SpotifyMonkeyProcess extends Process {
 
         if (this.monkey) {
             this.monkey.isShown = true;
-            this.monkey.appWindow?.show();
+            this.monkey.show();
         }
 
     }
@@ -54,9 +60,14 @@ export default class SpotifyMonkeyProcess extends Process {
 
         if (this.monkey) {
             this.monkey.isShown = false;
-            this.monkey.appWindow?.hide();
+            this.monkey.hide();
         }
+    }
 
+    public async onExit(): Promise<void> {
+        if (!(this.getSettings().findSetting("close_on_exit").getValue() as boolean)) {
+            this.monkey.show();
+        }
     }
 
 
@@ -64,7 +75,7 @@ export default class SpotifyMonkeyProcess extends Process {
         return [
             new StringSetting(this)
                 .setDefault((path.join(os.homedir(), "/AppData/Roaming/Spotify/Spotify.exe")).replace(/\\\\/g, '/'))
-                .setName("Spotify.exe Path")
+                .setName("Spotify Executable Path")
                 .setDescription("The path to your Spotify executable file. Restart required.")
                 .setAccessID('spotify_path')
                 .setValidator(s => {
@@ -75,19 +86,14 @@ export default class SpotifyMonkeyProcess extends Process {
                 .setName("Close Spotify on Exit")
                 .setDefault(false)
                 .setDescription("This will only work when Spotify is opened through Spotify Monkey. Restart required.")
-                .setAccessID('close-on-exit')
+                .setAccessID('close_on_exit')
 
         ];
     }
 
 
     public refreshSettings(modifiedSetting: Setting<unknown>): void {
-        if (modifiedSetting.getAccessID() === 'spotify_path') {
-            if (this.isInitialized()) {
-                console.info(`${MODULE_NAME}: Spotify path set to '${modifiedSetting.getValue()}'. A restart is required for this to take effect`);
-            }
 
-        }
     }
 
     public async handleEvent(eventName: string, data: any[]): Promise<any> {

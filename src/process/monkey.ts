@@ -1,38 +1,64 @@
 import { spawn } from "child_process";
 import { BaseWindow, WebContentsView, Rectangle } from "electron";
 import { Window, windowManager } from "node-window-manager";
-
+import SpotifyMonkeyProcess from "./main";
 
 
 export default class Monkey {
+
+    private readonly process: SpotifyMonkeyProcess;
+
     private nexusWindow: Window;
     private pathToExe: string;
 
     public isShown: boolean;
     public appWindow: Window;
 
+    private readonly MINIMIZED_WIDTH: number = 160
 
-    public constructor(pathToExe: string, isShown: boolean, closeOnExit: boolean) {
+
+
+
+    public constructor(process: SpotifyMonkeyProcess, pathToExe: string, isShown: boolean, closeOnExit: boolean) {
+        this.process = process;
+
+        windowManager.on('window-activated', this.onWindowChange.bind(this))
+
         this.pathToExe = pathToExe;
         this.isShown = isShown;
-
         this.nexusWindow = windowManager.getWindows().find(win => win.getTitle() === "Nexus");
         const existingWindow: Window = this.findBestWindow();
+
         if (existingWindow === undefined) {
-            spawn(this.pathToExe, [], {
-                detached: !closeOnExit
-            });
+            console.info("🐒 Spotify Monkey: Making a new Spotify instance.")
+            spawn(this.pathToExe, [], { detached: !closeOnExit })
+                .on('error', (err) => {
+                    console.error(err)
+                });
+
             this.waitForRealWindow().then((appWindow: Window) => {
                 this.attachHandlersToWindow(appWindow);
             }).catch(err => {
                 console.error(err);
             });
+
         } else {
+            console.info("🐒 Spotify Monkey: Existing Spotify instance found.")
             this.attachHandlersToWindow(existingWindow);
         }
     }
 
-    private waitForRealWindow(timeout = 10000, interval = 200): Promise<Window> {
+    private onWindowChange(window: Window) {
+        if (window.path === this.pathToExe) { // activated window, swap modules?
+            this.process.requestExternal("nexus.Main", "swap-to-module")
+        }
+    }
+
+    public cleanup() {
+        windowManager.removeAllListeners();
+    }
+
+    private waitForRealWindow(timeout: number = 10000, interval: number = 200): Promise<Window> {
         return new Promise((resolve, reject) => {
             const startMS: number = Date.now();
 
@@ -43,7 +69,7 @@ export default class Monkey {
                 }
 
                 if (Date.now() - startMS >= timeout) {
-                    return reject(new Error('Window not found within timeout'));
+                    return reject(new Error('🐒 Spotify not found within timeout'));
                 }
 
                 setTimeout(check, interval);
@@ -57,35 +83,56 @@ export default class Monkey {
     private attachHandlersToWindow(appWindow: Window) {
         this.appWindow = appWindow;
 
-        appWindow.restore();
         if (!this.isShown) {
-            appWindow.hide();
+            this.hide();
         } else {
-            appWindow.show();
-            appWindow.bringToTop();
+            this.show();
         }
 
         appWindow.setOwner(this.nexusWindow);
 
-        this.resize(appWindow);
+        this.resize();
 
         BaseWindow.getAllWindows()[0].contentView.children[0].on('bounds-changed', () => {
-            this.resize(appWindow);
+            this.resize();
         })
         BaseWindow.getAllWindows()[0].on('resize', () => {
-            this.resize(appWindow);
+            this.resize();
         })
         BaseWindow.getAllWindows()[0].on('move', () => {
-            this.resize(appWindow);
+            this.resize();
         })
     }
 
+    public isMinimized(): boolean {
+        return this.appWindow?.getBounds().width === this.MINIMIZED_WIDTH;
+    }
 
-    private resize(appWindow: Window) {
-        const windowZoom = (BaseWindow.getAllWindows()[0].contentView.children[0] as WebContentsView).webContents.zoomFactor;
+    public show() {
+        this.appWindow?.show();
+        this.appWindow?.restore()
+        this.resize()
+    }
+
+    public hide() {
+        this.appWindow?.hide();
+    }
+
+
+    public resize() {
+        const windowZoom: number = (BaseWindow.getAllWindows()[0].contentView.children[0] as WebContentsView).webContents.zoomFactor;
         const windowContentBounds: Rectangle = BaseWindow.getAllWindows()[0].getContentBounds();
 
-        appWindow.setBounds({
+        if (this.isMinimized()) {
+            if (this.isShown) {
+                this.appWindow.restore()
+            } else {
+                return;
+            }
+        }
+
+
+        this.appWindow?.setBounds({
             x: windowContentBounds.x + (70 * windowZoom),
             y: windowContentBounds.y,
             width: windowContentBounds.width - (70 * windowZoom),
@@ -94,15 +141,14 @@ export default class Monkey {
     }
 
     private findBestWindow(): Window | undefined {
-        const candidates: Window[] = windowManager.getWindows().filter(w =>
-            w.path.toLowerCase() === this.pathToExe.replace(/\//g, "\\").toLowerCase() &&
-            w.isVisible()
-        );
+        const candidates: Window[] = windowManager.getWindows().filter(w => {
+            return w.path.toLowerCase() === this.pathToExe.replace(/\//g, "\\").toLowerCase() && w.isVisible()
+        });
 
         if (candidates.length > 0) {
             const best: Window = candidates.sort((a, b) => {
-                const aArea = a.getBounds().width * a.getBounds().height;
-                const bArea = b.getBounds().width * b.getBounds().height;
+                const aArea: number = a.getBounds().width * a.getBounds().height;
+                const bArea: number = b.getBounds().width * b.getBounds().height;
                 return bArea - aArea;
             })[0];
 
