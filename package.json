@@ -1,0 +1,22 @@
+{
+  "name": "nexus-spotify-monkey",
+  "version": "1.0.0",
+  "description": "A developer template to create a module using vanilla TS and HTML for Nexus.",
+  "author": "aarontburn",
+  "scripts": {
+    "postinstall": "npm install https://gitpkg.vercel.app/aarontburn/nexus-core/nexus/dist?main --no-save",
+    "build": "npm run dev_export",
+    "start": "npm run build && electron ./node_modules/@nexus/nexus-client/main.js --dev --trace-warnings",
+    "export": "node node_modules/@nexus/nexus-exporter/exporter.js",
+    "dev_export": "node node_modules/@nexus/nexus-exporter/exporter.js --dev"
+  },
+  "devDependencies": {
+    "@types/yauzl-promise": "^4.0.1",
+    "electron": "^35.1.5",
+    "typescript": "^4.8.3",
+    "yauzl-promise": "^4.0.0"
+  },
+  "dependencies": {
+    "node-window-manager": "^2.2.4"
+  }
+}
