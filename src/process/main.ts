@@ -28,12 +28,12 @@ export default class SpotifyMonkeyProcess extends Process {
     }
 
 
-    public initialize(): void {
+    public async initialize(): Promise<void> {
         if (!this.isInitialized()) {
             console.info("🐒 Spotify Monkey is booted.");
         }
 
-        super.initialize();
+        await super.initialize();
 
         const pathToExe: string = this.getSettings().findSetting("spotify_path").getValue() as string;
         const closeOnExit: boolean = this.getSettings().findSetting("close_on_exit").getValue() as boolean;
@@ -45,7 +45,7 @@ export default class SpotifyMonkeyProcess extends Process {
 
 
 
-    public onGUIShown(): void {
+    public async onGUIShown(): Promise<void> {
         this.isShown = true;
 
         if (this.monkey) {
@@ -55,7 +55,7 @@ export default class SpotifyMonkeyProcess extends Process {
 
     }
 
-    public onGUIHidden(): void {
+    public async onGUIHidden(): Promise<void> {
         this.isShown = false;
 
         if (this.monkey) {
@@ -91,10 +91,10 @@ export default class SpotifyMonkeyProcess extends Process {
         ];
     }
 
-
-    public refreshSettings(modifiedSetting: Setting<unknown>): void {
-
+    public async onSettingModified(modifiedSetting?: Setting<unknown>): Promise<void> {
+        
     }
+
 
     public async handleEvent(eventName: string, data: any[]): Promise<any> {
         switch (eventName) {

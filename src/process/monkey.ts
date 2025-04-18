@@ -43,14 +43,18 @@ export default class Monkey {
             });
 
         } else {
-            console.info("🐒 Spotify Monkey: Existing Spotify instance found.")
+            console.info("🐒 Spotify Monkey: Existing Spotify instance found.");
             this.attachHandlersToWindow(existingWindow);
         }
     }
 
     private onWindowChange(window: Window) {
         if (window.path === this.pathToExe) { // activated window, swap modules?
-            this.process.requestExternal("nexus.Main", "swap-to-module")
+            if (BaseWindow.getAllWindows()[0].isMinimized()) {
+                BaseWindow.getAllWindows()[0].restore();
+            }
+
+            this.process.requestExternal("nexus.Main", "swap-to-module");
         }
     }
 
@@ -69,7 +73,7 @@ export default class Monkey {
                 }
 
                 if (Date.now() - startMS >= timeout) {
-                    return reject(new Error('🐒 Spotify not found within timeout'));
+                    return reject('🐒 Spotify Monkey: Could not find the Spotify window found within timeout.');
                 }
 
                 setTimeout(check, interval);
