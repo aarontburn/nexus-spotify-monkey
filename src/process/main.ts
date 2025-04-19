@@ -11,7 +11,6 @@ const ICON_PATH: string = path.join(__dirname, "../assets/spotify-monkey.png")
 
 export default class SpotifyMonkeyProcess extends Process {
 
-    // oo oo
     private monkey: Monkey;
 
     private isShown: boolean = false;
@@ -30,7 +29,7 @@ export default class SpotifyMonkeyProcess extends Process {
 
     public async initialize(): Promise<void> {
         if (!this.isInitialized()) {
-            console.info("🐒 Spotify Monkey is booted.");
+            console.info("🐒 Spotify Monkey is running.");
         }
 
         await super.initialize();
@@ -38,7 +37,7 @@ export default class SpotifyMonkeyProcess extends Process {
         const pathToExe: string = this.getSettings().findSetting("spotify_path").getValue() as string;
         const closeOnExit: boolean = this.getSettings().findSetting("close_on_exit").getValue() as boolean;
 
-        this.monkey?.cleanup(); // cleanup any old 
+        this.monkey?.cleanup(); // cleanup any old instances
         this.monkey = new Monkey(this, pathToExe, this.isShown, closeOnExit);
         this.sendToRenderer("path", pathToExe);
     }

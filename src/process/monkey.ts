@@ -146,7 +146,8 @@ export default class Monkey {
 
     private findBestWindow(): Window | undefined {
         const candidates: Window[] = windowManager.getWindows().filter(w => {
-            return w.path.toLowerCase() === this.pathToExe.replace(/\//g, "\\").toLowerCase() && w.isVisible()
+            return w.path.includes("Spotify.exe") && w.isVisible()
+            // return w.path.toLowerCase() === this.pathToExe.replace(/\//g, "\\").toLowerCase() && w.isVisible()
         });
 
         if (candidates.length > 0) {
