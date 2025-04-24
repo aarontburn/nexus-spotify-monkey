@@ -1,14 +1,16 @@
 # [Nexus](https://github.com/aarontburn/nexus-core): Spotify Monkey
 
 
-
-
-
 <img src="./src/assets/spotify-monkey.png" alt="drawing" width="200"/>
 
 A module for [Nexus](https://github.com/aarontburn/nexus-core) to "embed" Spotify as a Nexus module...
 
 And by "embed", this just takes the Spotify window and monkeys it around.
+
+## Installation
+1. Download the latest release `.zip`. 
+2. In Nexus, navigate to **Settings** > **Import Module**
+3. Select the downloaded `.zip` file to install.
 
 
 ## Limitations:
