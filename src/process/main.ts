@@ -1,7 +1,8 @@
 import * as path from "path";
-import { Process, Setting } from "@nexus/nexus-module-builder"
+import { DataResponse, HTTPStatusCodes, IPCSource, Process, Setting } from "@nexus/nexus-module-builder"
 import { BooleanSetting, StringSetting } from "@nexus/nexus-module-builder/settings/types";
 import { Window } from "node-window-manager";
+import * as fs from 'fs';
 
 const MODULE_ID: string = "{EXPORTED_MODULE_ID}";
 const MODULE_NAME: string = "{EXPORTED_MODULE_NAME}";
@@ -14,12 +15,14 @@ interface MonkeyParams {
     filter: (window: Window) => boolean;
     closeOnExit: boolean;
     isShown: boolean;
+    callback?: (event: string) => void
 }
 
 export default class ChildProcess extends Process {
 
 
     private isShown: boolean = false;
+    private isMonkeyCoreInstalled: boolean = false;
 
     public constructor() {
         super({
@@ -40,38 +43,74 @@ export default class ChildProcess extends Process {
         const pathToExe: string = this.getSettings().findSetting("spotify_path").getValue() as string;
         const closeOnExit: boolean = this.getSettings().findSetting("close_on_exit").getValue() as boolean;
 
-        this.requestExternal('aarontburn.Monkey_Core', 'add-window', {
+        const response: DataResponse = await this.requestExternal('aarontburn.Monkey_Core', 'add-window', {
             appName: "Spotify",
             exePath: pathToExe,
             closeOnExit: closeOnExit,
             isShown: this.isShown,
             filter: (w: Window) => w.path.includes("Spotify.exe") && w.isVisible(),
+            callback: this.onMonkeyEvent.bind(this)
 
         } as MonkeyParams);
 
-        this.sendToRenderer("path", pathToExe);
+        if (response.code === HTTPStatusCodes.NOT_FOUND) {
+            console.error(`[Spotify Monkey] Missing dependency: Monkey Core (aarontburn.Monkey_Core) https://github.com/aarontburn/nexus-monkey-core`);
+            this.sendToRenderer("missing_dependency", {
+                name: "Monkey Core",
+                id: "aarontburn.Monkey_Core",
+                url: "https://github.com/aarontburn/nexus-monkey-core"
+            });
+            
+        } else {
+            this.isMonkeyCoreInstalled = true;
+        }
+
     }
 
+
+    private onMonkeyEvent(event: string) {
+        switch (event) {
+            case 'found-window': {
+                this.sendToRenderer("found-window");
+                break;
+            }
+            case "lost-window": {
+                this.sendToRenderer("lost-window");
+                break;
+            }
+        }
+    }
+
+    public async handleExternal(source: IPCSource, eventType: string, data: any[]): Promise<DataResponse> {
+        if (source.getIPCSource() !== "aarontburn.Monkey_Core") { // currently reject everyone thats not monkey core
+            return { body: undefined, code: HTTPStatusCodes.UNAUTHORIZED }
+        }
+
+        switch (eventType) {
+            case "request-swap": {
+                return this.requestExternal("nexus.Main", "swap-to-module");
+            }
+        }
+
+    }
 
 
     public async onGUIShown(): Promise<void> {
         this.isShown = true;
-        this.requestExternal('aarontburn.Monkey_Core', 'show');
+        if (this.isMonkeyCoreInstalled) {
+            this.requestExternal('aarontburn.Monkey_Core', 'show');
+        }
 
     }
 
     public async onGUIHidden(): Promise<void> {
         this.isShown = false;
-        this.requestExternal('aarontburn.Monkey_Core', 'hide');
+
+        if (this.isMonkeyCoreInstalled) {
+            this.requestExternal('aarontburn.Monkey_Core', 'hide');
+        }
     }
 
-    public async onExit(): Promise<void> {
-        // if (!(this.getSettings().findSetting("close_on_exit").getValue() as boolean)) {
-        //     this.monkey.show();
-        // }
-        // this.monkey.appWindow.setOwner(null);
-        // this.monkey.show();
-    }
 
 
     public registerSettings(): (Setting<unknown> | string)[] {
@@ -95,7 +134,15 @@ export default class ChildProcess extends Process {
     }
 
     public async onSettingModified(modifiedSetting?: Setting<unknown>): Promise<void> {
-
+        if (modifiedSetting?.getAccessID() === 'spotify_path') {
+            const path: string = modifiedSetting.getValue() as string;
+            try {
+                await fs.promises.access(path);
+                this.sendToRenderer("path", path);
+            } catch {
+                this.sendToRenderer("path-error", path);
+            }
+        }
     }
 
 
@@ -105,8 +152,16 @@ export default class ChildProcess extends Process {
                 this.initialize();
                 break;
             }
-            case "reboot": {
-                this.initialize();
+            case "detach": {
+                this.requestExternal('aarontburn.Monkey_Core', 'detach');
+                break;
+            }
+            case "reattach": {
+                this.requestExternal('aarontburn.Monkey_Core', 'reattach');
+                break;
+            }
+            case "wait-for-window": {
+                this.requestExternal('aarontburn.Monkey_Core', 'wait-for-window');
                 break;
             }
 
