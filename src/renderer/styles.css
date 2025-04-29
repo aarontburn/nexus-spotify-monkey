@@ -4,15 +4,19 @@
     font-weight: 400;
 
     color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #242424;
+
+    --color-1: #000000;
+    --color-2: #f5f5f5;
+
+    color: var(--color-2);
+    background-color: var(--color-1);
 }
 
 #header {
     position: absolute;
     height: 35px;
     width: 100%;
-    outline: 1px solid white;
+    outline: 1px solid var(--color-2);
     top: 0;
     display: flex;
     align-items: center;
@@ -87,6 +91,7 @@ button {
     background-color: #353535;
     cursor: pointer;
     transition: border-color 0.25s;
+    color: var(--color-2);
 }
 
 button:hover {
@@ -95,8 +100,8 @@ button:hover {
 
 @media (prefers-color-scheme: light) {
     :root {
-        color: #213547;
-        background-color: #ffffff;
+        --color-1: #f5f5f5;
+        --color-2: #000000;
     }
 
     button {
